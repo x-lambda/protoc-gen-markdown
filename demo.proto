@@ -1,0 +1,277 @@
+syntax = "proto3";
+
+package comic.v0;
+
+// 漫画核心服务
+service Comic {
+  // 根据关联番剧ID获取漫画信息（番剧页卡片专用）
+  rpc PgcCard (PgcCardReq) returns (PgcCardResp);
+  // 根据漫画ID获取漫画信息
+  rpc ComicInfo (ComicInfoReq) returns (ComicInfoResp);
+  // 获取批量漫画信息
+  rpc GetComicInfos (GetComicInfosReq) returns (GetComicInfosResp);
+  // 获取用户关联的漫画
+  rpc GetUserComics (GetUserComicsReq) returns (GetUserComicsResp);
+  // 校验是否能发送弹幕
+  rpc CanSendDanmaku(CanSendDanmakuReq) returns (CanSendDanmakuResp);
+  // 首次注册
+  rpc QueryDanmaku(QueryDanmakuReq) returns(QueryDanmakuResp);
+  // 获取单话下面所有的图片 url
+  rpc GetImageByEpID(GetImageByEpIDReq) returns(GetImageByEpIDResp);
+  // 漫画详情
+  rpc GetComicByEpID(GetComicByEpIDReq) returns(GetComicByEpIDResp);
+  // 获取漫画下面 index 不为空的单话 ID 列表
+  rpc GetComicEpIDs(GetComicEpIDsReq) returns(GetComicEpIDsResp);
+}
+
+message EpisodeInfos {
+  // 单话 id 列表
+  repeated int32 ep_ids = 1;
+}
+
+message GetComicEpIDsResp {
+  int32 code = 1;
+  string msg = 2;
+  EpisodeInfos data = 3;
+}
+
+message GetComicEpIDsReq {
+  // 漫画 id
+  int32 comic_id = 1;
+}
+
+message DanmakuComicInfo {
+  // 漫画标题
+  string title = 1;
+  // 单话标题
+  string short_title = 2;
+  // 单话序号
+  float ord = 3;
+  // 漫画详情页链接
+  string url = 4;
+  // 漫画 id
+  int32 comic_id = 5;
+}
+
+message GetComicByEpIDResp {
+  int32 code = 1;
+  string msg = 2;
+  DanmakuComicInfo data = 3;
+}
+
+message GetComicByEpIDReq {
+  // 单话(章节) id
+  int32 ep_id = 1;
+}
+
+message DanmakuImageInfo {
+  // 图片 id
+  int64 oid = 1;
+  // 图片 url
+  string url = 2;
+}
+
+message EpisodeImages {
+  // 单话(章节)下面所有的图片信息
+  repeated DanmakuImageInfo list = 1;
+}
+
+message GetImageByEpIDResp {
+  int32 code = 1;
+  string msg = 2;
+  EpisodeImages data = 3;
+}
+
+message GetImageByEpIDReq {
+  // 单话(章节) id
+  int32 ep_id = 1;
+}
+
+message DanmakuInfo {
+  // 图片 id
+  int64 oid = 1;
+  // 章节(单话) id
+  int32 pid = 2;
+  // 4:先审后发 5:先发后审 9:运营先审后发 10:运营先发后审
+  int32 attr = 3;
+  // 是否允许用户发送弹幕
+  bool state = 4;
+  // 可显示弹幕上限
+  int32 maxlimit = 5;
+}
+
+message QueryDanmakuResp {
+  int32 code = 1;
+  string msg = 2;
+  DanmakuInfo data = 3;
+}
+
+message QueryDanmakuReq {
+  // 单话(章节) id
+  int32 ep_id = 1;
+}
+
+message CanSendDanmakuResp {
+  int32 code = 1;
+  string msg = 2;
+}
+
+message CanSendDanmakuReq {
+  // uid
+  int64 uid = 1;
+  // 单话(章节) id
+  int32 ep_id = 2;
+}
+
+message GetUserComicsReq {
+  // 用户 UID
+  int64 uid = 1;
+  // 页码
+  int32 page = 2;
+  // 分页数量上限
+  int32 page_size = 3;
+}
+
+message GetUserComicsResp {
+  // 0. 接口请求成功
+  int32 code = 1;
+  string msg = 2;
+  UserComicsInfo data = 3;
+}
+
+message UserComicsInfo {
+  // comics 总数(仅供展示使用, 以具体分页为准)
+  int32 total_count = 1;
+  repeated UserComic comics = 2;
+}
+
+message UserComic {
+  // 漫画ID
+  int32 id = 1;
+  // 漫画标题
+  string title = 2;
+  // 竖版封面
+  string vertical_cover = 3;
+  // 完结状态 1:完结 0:连载 -1:未开刊
+  int32 is_finish = 4;
+  // 风格标签
+  repeated StyleInfo styles = 5;
+  // 总话数（全x话）
+  int32 total = 6;
+  // 最新话短标题
+  string last_short_title = 7;
+  // 最新话更新时间: 秒级时间戳, 当更新时间不存在时, 最新话更新时间为0
+  int64 last_update_time = 8;
+  // h5 跳转链接
+  string url = 9;
+  // pc 跳转链接
+  string pc_url = 10;
+}
+
+message StyleInfo {
+  int32 id = 1;
+  string name = 2;
+}
+
+message GetComicInfosReq {
+  // 漫画ID列表
+  repeated int32 ids = 1;
+  // 用户ID
+  // 如果传入此字段接口会返回用户追漫状态
+  int64 mid = 2;
+  // 业务来源标识
+  // 会以 form=xxx 的方式追加到漫画详情页 url 上
+  string from = 3;
+}
+
+message GetComicInfosResp {
+  // 0接口请求成功
+  int32 code = 1;
+  string msg = 2;
+  repeated ComicInfo data = 3;
+}
+
+message ComicInfo {
+  // 如果传入的漫画id没有对应数据，2，3，4，5都为空值
+  int32 id = 1;
+  // 漫画标题
+  string title = 2;
+  // 漫画作者列表
+  repeated string author = 3;
+  // 漫画简介
+  string evaluate = 4;
+  // 竖版封面
+  string vertical_cover = 5;
+  // 完结状态 1:完结 0:连载 -1:未开刊
+  int32 is_finish = 6;
+  // 风格标签
+  repeated StyleInfo styles = 7;
+  // 总话数（全x话）
+  int32 total = 8;
+  // 最新话短标题
+  string last_short_title = 9;
+  // 最新话更新时间: 秒级时间戳, 当更新时间不存在时, 最新话更新时间为0
+  int64 last_update_time = 10;
+  // h5 跳转url
+  string url = 11;
+  // pc 跳转链接
+  string pc_url = 12;
+  // 用户是否追漫，0 未追；1 已追
+  int32 fav_status = 13;
+}
+
+message PgcCardReq {
+  // 番剧ID
+  int32 season_id = 1;
+  // 是否来自 pc，传 1 会返回 pc 链接
+  int32 from_pc = 2;
+}
+
+message PgcCardResp {
+  int32 code = 1;
+  string msg = 2;
+  repeated PgcCard data = 3;
+}
+
+message PgcCard {
+  // 漫画标题
+  string title = 1;
+  // 漫画封面（竖版封面）
+  string cover = 2;
+  // 最新话
+  float last_ord = 3;
+  // 人气值
+  int64 pop = 4;
+  // 漫画ID
+  int32 comic_id = 5;
+  // h5 跳转链接
+  // from_pc = 1 时返回 pc 链接
+  string jump_url = 6;
+  // 最新话文本
+  string last_ord_str = 7;
+  // 标签
+  string label = 8;
+  // 出版方
+  string producer = 9;
+  // 作者信息
+  repeated string authors = 10;
+  // PC跳转链接
+  string pc_url = 11;
+}
+
+message ComicInfoReq {
+  // 漫画ID
+  int32 id = 1;
+}
+
+message ComicInfoResp {
+  int32 code = 1;
+  string msg = 2;
+  ComicInfoData data = 3;
+}
+
+
+message ComicInfoData {
+  // 漫画标题
+  string title = 1;
+}
