@@ -1,4 +1,4 @@
-package protoc_gen_markdown
+package generator
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ type Params struct {
 	PathPrefix string
 }
 
-// parseParams 解析参数
+// ParseParams 解析参数
 // 参数格式 protoc --markdown_out=path_prefix=/tmp,package_name=api:.
-func parseParams(params string) (p Params, err error) {
+func ParseParams(params string) (p Params, err error) {
 	temp := make(map[string]string)
 	for _, v := range strings.Split(params, ",") {
 		if v == "" {
