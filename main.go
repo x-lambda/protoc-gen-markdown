@@ -1,30 +1,31 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/golang/protobuf/proto"
-
 	pgm "github.com/x-lambda/protoc-gen-markdown/generator"
 )
 
 func main() {
-	req := pgm.ReadGenRequest(os.Stdin)
-
-	//params, err := pgm.ParseParams(req.GetParameter())
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	g := pgm.NewGenerator()
-	resp := g.Generate(req)
-
-	out, err := proto.Marshal(&resp)
+	req, err := pgm.ReadGenRequest(os.Stdin)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	fmt.Println(string(out))
+	opt, err := pgm.ParseParams(req.GetParameter())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	g := pgm.NewGenerator(opt)
+	resp := g.Generate(&req)
+	out, err := proto.Marshal(&resp)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	os.Stdout.Write(out)
+	return
 }

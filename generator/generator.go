@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
@@ -15,21 +14,23 @@ import (
 	"github.com/pseudomuto/protokit"
 )
 
-// ReadGenRequest
-func ReadGenRequest(r io.Reader) *plugin.CodeGeneratorRequest {
+// ReadGenRequest 把字节序列化为 CodeGeneratorRequest 对象
+func ReadGenRequest(r io.Reader) (req plugin.CodeGeneratorRequest, err error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "read err: %+v", err)
-		panic(err)
+		return
 	}
 
-	req := new(plugin.CodeGeneratorRequest)
-	if err = proto.Unmarshal(data, req); err != nil {
-		fmt.Fprintf(os.Stderr, "proto unmarshal err: %+v", err)
-		panic(err)
+	if err = proto.Unmarshal(data, &req); err != nil {
+		return
 	}
 
-	return req
+	if len(req.FileToGenerate) == 0 {
+		err = fmt.Errorf("non proto file")
+		return
+	}
+
+	return
 }
 
 type field struct {
@@ -78,20 +79,23 @@ type Generator struct {
 
 	// Service name
 	name string
+
+	opt Options
 }
 
-func NewGenerator() Generator {
+func NewGenerator(opt Options) Generator {
 	return Generator{
 		messages: map[string]*message{},
 		enums:    map[string]*protokit.EnumDescriptor{},
 		apis:     []*api{},
 		output:   bytes.NewBuffer(nil),
+		opt:      opt,
 	}
 }
 
 func (g *Generator) Generate(in *plugin.CodeGeneratorRequest) (resp plugin.CodeGeneratorResponse) {
 	g.scanAllMessage(in, &resp)
-	g.GenerateMarkdown(in, &resp)
+	g.generateMarkdown(in, &resp)
 	return
 }
 
@@ -159,7 +163,7 @@ func (g *Generator) scanMessage(md *protokit.Descriptor) {
 
 			if e, ok := g.enums[fd.GetTypeName()]; ok {
 				f.Type = "TYPE_ENUM"
-				parts := []string{}
+				parts := make([]string, 0, len(e.GetValues()))
 
 				for _, v := range e.GetValues() {
 					line := fmt.Sprintf("%s(=%d) %s", v.GetName(), v.GetNumber(), v.GetComments().GetTrailing())
@@ -182,6 +186,8 @@ func (g *Generator) scanMessage(md *protokit.Descriptor) {
 						f.Type = typeName
 					}
 				}
+
+				f.Label = 0 // TODO ?
 			}
 			fields[i] = f
 		}
@@ -218,7 +224,8 @@ func (g *Generator) scanService(d *protokit.ServiceDescriptor) {
 	}
 }
 
-func (g *Generator) GenerateMarkdown(req *plugin.CodeGeneratorRequest, resp *plugin.CodeGeneratorResponse) {
+// generateMarkdown 生成 markdown 文件
+func (g *Generator) generateMarkdown(req *plugin.CodeGeneratorRequest, resp *plugin.CodeGeneratorResponse) {
 	descriptors := protokit.ParseCodeGenRequest(req)
 
 	// 一个 service 对应一个 markdown 文件
@@ -234,8 +241,12 @@ func (g *Generator) GenerateMarkdown(req *plugin.CodeGeneratorRequest, resp *plu
 
 			g.generateDoc()
 
-			// 输出的文件信息
-			name := strings.Replace(d.GetName(), ".proto", ".md", 1)
+			// 输出的文件信息，如果一个文件中定义了多个service，不要指定filename参数
+			name := g.opt.Filename
+			if name == "" {
+				name = strings.Replace(d.GetName(), ".proto", ".md", 1)
+			}
+
 			resp.File = append(resp.File, &plugin.CodeGeneratorResponse_File{
 				Name:    proto.String(name),
 				Content: proto.String(g.output.String()),
@@ -355,7 +366,7 @@ func (g *Generator) generateJsDocForMessage(m *message) string {
 		js += g.generateJsDocForField(f)
 	}
 
-	js += "\n"
+	js += "}"
 
 	return js
 }
@@ -380,21 +391,19 @@ func (g *Generator) generateDoc() {
 	g.P()
 
 	for _, api := range g.apis {
-		g.P("## ", api.Path)
+		g.P("## ", "`"+g.opt.Prefix+api.Path+"`") // url
 		g.P()
-		g.P(api.Doc)
+		g.P(api.Doc) // 注释
 		g.P()
-		g.P("### Method")
+		g.P("### `Method: " + api.Method + "`")
 		g.P()
-		g.P(api.Method)
-		g.P()
-		g.P("### Request")
+		g.P("### `Request`")
 		g.P("```javascript")
 		code, _ := jsbeautifier.Beautify(&api.Input, options)
 		g.P(code)
 		g.P("```")
 		g.P()
-		g.P("### Reply")
+		g.P("### `Reply`")
 		g.P("```javascript")
 		code, _ = jsbeautifier.Beautify(&api.Output, options)
 		g.P(code)

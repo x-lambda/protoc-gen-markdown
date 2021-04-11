@@ -4,3 +4,4 @@ coverage.out
 vendor
 *.sw[op]
 protoc-gen-markdown
+foo.md

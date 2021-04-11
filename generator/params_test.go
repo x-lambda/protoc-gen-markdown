@@ -7,8 +7,11 @@ import (
 )
 
 func TestParseParams(t *testing.T) {
-	s := "path_prefix=/tmp,package_name=api"
-	p, err := parseParams(s)
+	s := "prefix=/tmp,package=demo.v0,filename=out.md"
+	p, err := ParseParams(s)
 	assert.Nil(t, err)
-	assert.Equal(t, p.PathPrefix, "/tmp")
+
+	assert.Equal(t, p.Prefix, "/tmp")
+	assert.Equal(t, p.Package, "demo.v0")
+	assert.Equal(t, p.Filename, "out.md")
 }

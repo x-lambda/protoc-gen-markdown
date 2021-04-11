@@ -16,7 +16,7 @@ message SearchReq {
 message SearchResp {
   int32 code = 1;
   string msg = 2;
-  repeated ReplyData data = 3;
+  ReplyData data = 3;
 }
 
 message ReplyData {

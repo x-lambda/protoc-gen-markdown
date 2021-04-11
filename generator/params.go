@@ -5,14 +5,20 @@ import (
 	"strings"
 )
 
-type Params struct {
-	PathPrefix string
+type Options struct {
+	Prefix   string
+	Package  string
+	Filename string
+	// TODO callback
 }
 
 // ParseParams 解析参数
-// 参数格式 protoc --markdown_out=path_prefix=/tmp,package_name=api:.
-func ParseParams(params string) (p Params, err error) {
-	temp := make(map[string]string)
+// 参数格式 protoc --markdown_out=prefix=api,package=demo.v0,filename=x.md
+// prefix: 表示在
+// package: 如果参数中未指定，则使用proto文件中定义
+// filename: 生成的文件名
+func ParseParams(params string) (opt Options, err error) {
+	pamars := make(map[string]string)
 	for _, v := range strings.Split(params, ",") {
 		if v == "" {
 			continue
@@ -31,12 +37,18 @@ func ParseParams(params string) (p Params, err error) {
 			return
 		}
 
-		temp[key] = value
+		pamars[key] = value
 	}
 
-	for key, value := range temp {
-		if key == "path_prefix" {
-			p.PathPrefix = value
+	for key, value := range pamars {
+		switch key {
+		case "prefix":
+			opt.Prefix = value
+		case "package":
+			opt.Package = value
+		case "filename":
+			opt.Filename = value
+		default:
 		}
 	}
 	return
