@@ -15,6 +15,8 @@ import (
 )
 
 // ReadGenRequest 把字节序列化为 CodeGeneratorRequest 对象
+// 提供这个接口的原因是：我们可以人为制造 CodeGeneratorRequest 对象，写进buffer中(虽然过于麻烦，不推荐-_-||)
+// 然后通过这个接口生成指定的文档/代码
 func ReadGenRequest(r io.Reader) (req plugin.CodeGeneratorRequest, err error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
