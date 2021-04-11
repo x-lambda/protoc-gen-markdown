@@ -13,8 +13,9 @@ type Options struct {
 }
 
 // ParseParams 解析参数
-// 参数格式 protoc --markdown_out=prefix=api,package=demo.v0,filename=x.md
-// prefix: 表示在
+// 官方的插件参数格式是 --插件名_out=参数内容:输出文件夹
+// 参数格式 protoc --markdown_out=prefix=api,package=demo.v0,filename=x.md:.
+// prefix: 表示在接口前面添加的前缀
 // package: 如果参数中未指定，则使用proto文件中定义
 // filename: 生成的文件名
 func ParseParams(params string) (opt Options, err error) {
