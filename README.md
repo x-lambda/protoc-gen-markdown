@@ -12,7 +12,7 @@ go get -u github.com/x-lambda/protoc-gen-markdown
 
 ### 使用
 ```shell
-protoc -I . --markdown_out=prefix=/api,package=demo.v0,filename=foo.md:. demo.proto
+protoc -I . --markdown_out=filename=foo.md:/tmp/doc_path demo.proto
 ```
 
 ##### `TODO`
@@ -34,3 +34,7 @@ protoc -I . --markdown_out=prefix=/api,package=demo.v0,filename=foo.md:. demo.pr
 > `generator.ReadGenRequest()`可以接受不同的源，例如可以自定义一个合法的`CodeGeneratorRequest`对象，
 > 放到`buffer`中，然后再通过`ReadGenRequest()`和`Generator.Generate()`转成`CodeGeneratorResponse`对象。
 > 这样如果`protoc`也提供`package`的方式，则不需要安装这些二进制，可以直接在系统中集成即可。
+
+
+##### TODO
+markdown锚点设置

@@ -12,6 +12,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 	"github.com/pseudomuto/protokit"
+	"google.golang.org/genproto/googleapis/api/annotations"
 )
 
 // ReadGenRequest 把字节序列化为 CodeGeneratorRequest 对象
@@ -194,7 +195,7 @@ func (g *Generator) scanMessage(md *protokit.Descriptor) {
 			fields[i] = f
 		}
 
-		g.messages[md.GetFullName()] = &message{
+		g.messages[md.GetFullName()[1:]] = &message{
 			Name:   md.GetName(),
 			Doc:    md.GetComments().GetTrailing(),
 			Fields: fields,
@@ -207,10 +208,8 @@ func (g *Generator) scanService(d *protokit.ServiceDescriptor) {
 
 	for _, md := range d.GetMethods() {
 		api := api{}
-
-		// TODO callback generate
 		api.Method = "POST"
-		api.Path = "" + "/" + d.GetFullName() + "/" + md.GetName()
+		api.Path = g.buildHttpRule(md).HTTPRules[0]
 		doc := md.GetComments().GetLeading()
 
 		// 支持文档换行
@@ -235,7 +234,11 @@ func (g *Generator) generateMarkdown(req *plugin.CodeGeneratorRequest, resp *plu
 		for _, sd := range d.GetServices() {
 			g.scanService(sd)
 
-			g.name = *sd.Name
+			g.name = sd.GetName()
+			if sd.Name != nil {
+				g.name = *sd.Name
+			}
+
 			for _, api := range g.apis {
 				api.Input = g.generateJsDocForMessage(api.Request)
 				api.Output = g.generateJsDocForMessage(api.Reply)
@@ -255,6 +258,36 @@ func (g *Generator) generateMarkdown(req *plugin.CodeGeneratorRequest, resp *plu
 			})
 		}
 	}
+}
+
+type method struct {
+	Name      string   `json:"name"`
+	HTTPRules []string `json:"http_rules"`
+}
+
+func (g *Generator) buildHttpRule(md *protokit.MethodDescriptor) *method {
+	httpRules := make([]string, 0)
+	if httpRule, ok := md.OptionExtensions["google.api.http"].(*annotations.HttpRule); ok {
+		switch httpRule.GetPattern().(type) {
+		case *annotations.HttpRule_Get:
+			httpRules = append(httpRules, fmt.Sprintf("GET %s", httpRule.GetGet()))
+		case *annotations.HttpRule_Put:
+			httpRules = append(httpRules, fmt.Sprintf("PUT %s", httpRule.GetPut()))
+		case *annotations.HttpRule_Post:
+			httpRules = append(httpRules, fmt.Sprintf("POST %s", httpRule.GetPost()))
+		case *annotations.HttpRule_Delete:
+			httpRules = append(httpRules, fmt.Sprintf("DELETE %s", httpRule.GetDelete()))
+		case *annotations.HttpRule_Patch:
+			httpRules = append(httpRules, fmt.Sprintf("PATCH %s", httpRule.GetPatch()))
+		}
+		// Append more for each rule in httpRule.AdditionalBindings...
+	}
+
+	if len(httpRules) == 0 {
+		// 这里使用service name合成
+	}
+
+	return &method{Name: md.GetName(), HTTPRules: httpRules}
 }
 
 func (g *Generator) generateJsDocForField(f field) string {
@@ -361,6 +394,10 @@ func (g *Generator) generateJsDocForField(f field) string {
 }
 
 func (g *Generator) generateJsDocForMessage(m *message) string {
+	if m == nil{
+		return "{}"
+	}
+
 	var js string
 	js += "{\n"
 
@@ -394,11 +431,9 @@ func (g *Generator) generateDoc() {
 
 	for _, api := range g.apis {
 		g.P("## ", "`"+g.opt.Prefix+api.Path+"`") // url
-		g.P()
 		g.P(api.Doc) // 注释
 		g.P()
-		g.P("### `Method: " + api.Method + "`")
-		g.P()
+		// g.P("### `Method: " + api.Method + "`")
 		g.P("### `Request`")
 		g.P("```javascript")
 		code, _ := jsbeautifier.Beautify(&api.Input, options)
